@@ -13,18 +13,24 @@ Author URI: http://mjrosengrant.com
 
 //require "mjr_bc_installer.php";
 
+
 class Mjr_Bitcoin{
 
-	//Used for the singleton pattern
+	//Singleton Object
 	private static $instance = null;
+
+ 	//Delegate for Blockchain API calls
+ 	private $bchain_delegate = null;
 
 	private $blockchain_root = "https://blockchain.info/"; 
 	private $mysite_root = "http://mjrosengrant.com/";
 	private $secret = "2B97B7C0541A69BFCC333B8C7480FC573996dC030253287CD6A81576D75981EF";
 	private $my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
 
-	private $premium_pages = new array();
- 
+	//Stores page id as index and price in USD as the value
+	private $premium_pages = array();
+ 	
+
 
 
 	public static function get_instance() {
@@ -39,19 +45,19 @@ class Mjr_Bitcoin{
 
 	private function __construct(){
         
+        require_once plugin_dir_path( __FILE__ ) . "blockhain_delegate.php";
+        $bchain_delegate = new Blockchain_Delegate();
+
         register_activation_hook( __FILE__, array($this, 'create_invoice_tables'));
 	    load_plugin_textdomain( 'mjr_bc', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
 
 	    add_action( 'save_post', 'myplugin_save_meta_box_data' );
 		add_action( 'add_meta_boxes', 'myplugin_add_meta_box' );
 
-        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_styles' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
 		add_filter( 'the_password_form', 'print_qr_code' );
 
- 		//add_filter( 'the_content', array( $this, 'append_post_notification' ) );
-
-		
+ 		add_filter( 'the_content', array( $this, 'append_post_notification' ) );	
 	}
 	 
 	public function register_plugin_scripts() {
@@ -69,7 +75,7 @@ class Mjr_Bitcoin{
 
 	public function append_post_notification( $content ) {
  
-	    $notification = __( 'This message was appended with MJR Bitcoin.', 'demo-plugin-locale' );
+	    $notification = __( '$100 = ' . $this->bchain_delegate->test/*$this->bchain_delegate->usd_to_btc(100) . 'BTC'*/, 'mjr_bc-locale' );
 	    return $content . $notification;
  
 	}
@@ -82,7 +88,7 @@ class Mjr_Bitcoin{
                 $my_bitcoin_address .'%3Famount==' . $price_in_btc.'%26label=Pay-Demo&size=125" alt=""/>
             </div>';*/
 
- 		$content = "Print qr code function is working!";
+ 		$content = $content . " Print qr code function is working!";
 
  		return $content;
 
