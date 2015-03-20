@@ -1,6 +1,7 @@
 This is the demo site for my Bitcoin microtransaction plugin. For my Entrepreneurship in Engineering course, my team and I are building a wordpress plugin that will allow blog owners to charge small amounts of bitcoin for posts. My end goal for the semester is to be able to charge by the post, but afterwards I’d like to explore other business models, such as pay per minute.
 
-Source Code: https://github.com/mjrosengrant/bitcoin_tipper
+Bitcoin interface based on the following repository
+https://github.com/blockchain/receive_payment_php_demo
 
 Here is the progression of MVPs I am hoping to acheive:
 <ol>
