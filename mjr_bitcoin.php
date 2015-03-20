@@ -7,35 +7,136 @@ Author: Mike Rosengrant
 Author URI: http://mjrosengrant.com
 */
 
-//include 'mjr_bitcoin_widget.php';
-
 //I began this plugin based on several different open source projects, Including
-// http://gordon.knoppe.net/articles/category/attach-files/ - Provided the general layout of a plugin
-//
+//http://code.tutsplus.com/tutorials/two-ways-to-develop-wordpress-plugins-object-oriented-programming--wp-27716
+// Add link to bitcoin demo here
 
-include "receive_payments/include.php";
+//require "mjr_bc_installer.php";
+
+class Mjr_Bitcoin{
+
+	//Used for the singleton pattern
+	private static $instance = null;
+
+	private $blockchain_root = "https://blockchain.info/"; 
+	private $mysite_root = "http://mjrosengrant.com/";
+	private $secret = "2B97B7C0541A69BFCC333B8C7480FC573996dC030253287CD6A81576D75981EF";
+	private $my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
+
+	private $premium_pages = new array();
+ 
+
+
+	public static function get_instance() {
+ 
+        if ( null == self::$instance ) {
+            self::$instance = new self;
+        }
+        return self::$instance;
+ 
+    } // end get_instance;
+
+
+	private function __construct(){
+        
+        register_activation_hook( __FILE__, array($this, 'create_invoice_tables'));
+	    load_plugin_textdomain( 'mjr_bc', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
+
+	    add_action( 'save_post', 'myplugin_save_meta_box_data' );
+		add_action( 'add_meta_boxes', 'myplugin_add_meta_box' );
+
+        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_styles' ) );
+        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
+		add_filter( 'the_password_form', 'print_qr_code' );
+
+ 		//add_filter( 'the_content', array( $this, 'append_post_notification' ) );
+
+		
+	}
+	 
+	public function register_plugin_scripts() {
+	 
+	   /* wp_register_script( 'mjr_bc', plugins_url( 'mjr_bc/receive_payments/callback.php' ) );
+	    wp_enqueue_script( 'mjr_bc' );
+
+	    wp_register_script( 'mjr_bc', plugins_url( 'mjr_bc/receive_payments/include.php' ) );
+	    wp_enqueue_script( 'mjr_bc' );
+
+	    wp_register_script( 'mjr_bc', plugins_url( 'mjr_bc/receive_payments/order_status.php' ) );
+	    wp_enqueue_script( 'mjr_bc' );*/
+	 
+	}
+
+	public function append_post_notification( $content ) {
+ 
+	    $notification = __( 'This message was appended with MJR Bitcoin.', 'demo-plugin-locale' );
+	    return $content . $notification;
+ 
+	}
+
+	public function print_qr_code($content){
+
+		/*$content = '<div class="blockchain stage-ready" style="text-align:center">
+                Please send' . $price_in_btc . ' BTC to <br /> <b>' . [[address]] . '</b> <br /> 
+                <img style="margin:5px" id="qrsend" src=" ' . $blockchain_root . 'qr?data=bitcoin:' . 
+                $my_bitcoin_address .'%3Famount==' . $price_in_btc.'%26label=Pay-Demo&size=125" alt=""/>
+            </div>';*/
+
+ 		$content = "Print qr code function is working!";
+
+ 		return $content;
+
+	}
+
+	function create_invoice_tables ( $wpdb, $table_prefix ) {
 	
-if ( !mjr_bitcoin_mysql_table_exists($wpdb, $table_prefix."mjr_bc_invoices") ) 
-	mjr_bitcoin_mysql_install($wpdb, $table_prefix);
+		global $wpdb;
+		global $table_prefix;
 
-if ( mjr_bitcoin_mysql_table_exists($wpdb, $table_prefix."mjr_bc_invoices") ) {
-	//Adds meta box to the 
-	add_action( 'add_meta_boxes', 'myplugin_add_meta_box' );
+		$charset_collate = $wpdb->get_charset_collate();
+
+		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
+
+		//Creates Invoice Table
+	  	$invoice_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_invoices (
+			invoice_id INTEGER, 
+			price_in_usd DOUBLE, 
+			price_in_btc DOUBLE, 
+			product_url TEXT, 
+			PRIMARY KEY (invoice_id))';
+		dbDelta($invoice_sql);
+
+		//Creates invoice payment Table
+		$invoice_payment_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_invoice_payments (
+			transaction_hash CHAR(64), 
+			value DOUBLE, 
+			invoice_id INTEGER, 
+			PRIMARY KEY (transaction_hash))';
+		dbDelta($invoice_payment_sql);
 
 
-} // End of Plugin Actions
+		//Creates pending invoices table
+		$pending_invoice_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_pending_invoice_payments (
+			transaction_hash CHAR(64), 
+			value DOUBLE, 
+			invoice_id INTEGER, 
+			PRIMARY KEY (transaction_hash))';
+		dbDelta($pending_invoice_sql);
+	}
+
+	function mjr_bitcoin_mysql_table_exists( $wpdb, $table_name ) {
+		global $wpdb;
+		if ( !$wpdb->get_results("SHOW TABLES LIKE '%$table_name%'") ) return FALSE;
+		else return TRUE;
+	}
 
 
+	function mjr_bitcoin_mysql_warning() {
+		global $wpdb;
+		echo '<div class="updated"><h3>WARNING! The MJR Bitcoin MySQL databases were not created! ' . 
+		$wpdb->last_error . '</h3></div>';
+	}
 
-add_action( 'save_post', 'myplugin_save_meta_box_data' );
-add_action( 'add_meta_boxes', 'myplugin_add_meta_box' );
-
-register_activation_hook( __FILE__, 'myplugin_activate' );
-
-
-/* ---------------------------------------------
-					FUNCTIONS
-------------------------------------------------*/
 
 /**
  * Adds a box to the main column on the Post and Page edit screens.
@@ -132,54 +233,15 @@ function myplugin_save_meta_box_data( $post_id ) {
 }
 
 
-function mjr_bitcoin_mysql_install ( $wpdb, $table_prefix ) {
-	
-	global $wpdb;
-	$charset_collate = $wpdb->get_charset_collate();
-
-	require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
-
-	//Creates Invoice Table
-  	$invoice_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_invoices (
-		invoice_id INTEGER, 
-		price_in_usd DOUBLE, 
-		price_in_btc DOUBLE, 
-		product_url TEXT, 
-		PRIMARY KEY (invoice_id))';
-	dbDelta($invoice_sql);
-
-	//Creates invoice payment Table
-	$invoice_payment_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_invoice_payments (
-		transaction_hash CHAR(64), 
-		value DOUBLE, 
-		invoice_id INTEGER, 
-		PRIMARY KEY (transaction_hash))';
-	dbDelta($invoice_payment_sql);
 
 
-	//Creates pending invoices table
-	$pending_invoice_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_pending_invoice_payments (
-		transaction_hash CHAR(64), 
-		value DOUBLE, 
-		invoice_id INTEGER, 
-		PRIMARY KEY (transaction_hash))';
-	dbDelta($pending_invoice_sql);
+
 
 
 }
 
-function mjr_bitcoin_mysql_table_exists( $wpdb, $table_name ) {
-	global $wpdb;
-	if ( !$wpdb->get_results("SHOW TABLES LIKE '%$table_name%'") ) return FALSE;
-	else return TRUE;
-}
+$mjr_bc = Mjr_Bitcoin::get_instance();
 
-
-function mjr_bitcoin_mysql_warning() {
-	global $wpdb;
-	echo '<div class="updated"><h3>WARNING! The MJR Bitcoin MySQL databases were not created! ' . 
-	$wpdb->last_error . '</h3></div>';
-}
 
 
 ?>
