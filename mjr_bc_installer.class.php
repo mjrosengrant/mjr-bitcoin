@@ -5,10 +5,15 @@ class Mjr_Bc_Installer{
 
 	function install(){
 		file_put_contents("logs/installer_log.txt", "Install function entered! \n",FILE_APPEND);
-		create_invoice_tables($wpdb,$table_prefix);
+		$this->create_invoice_tables();
 	}
 
-	function create_invoice_tables ($wpdb,$table_prefix) {
+	function uninstall(){
+		file_put_contents("logs/installer_log.txt", "Install function entered! \n",FILE_APPEND);
+		$this->drop_invoice_tables();
+	}
+
+	function create_invoice_tables () {
 
 		global $wpdb;
 		global $table_prefix;
@@ -44,8 +49,28 @@ class Mjr_Bc_Installer{
 		dbDelta($pending_invoice_sql);
 	}
 
-	function mjr_bitcoin_mysql_table_exists( $wpdb, $table_name ) {
+	function drop_invoice_tables () {
+
 		global $wpdb;
+		global $table_prefix;
+
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
+
+		$t1 = $table_prefix . 'mjr_bc_invoices';
+		$t2 = $table_prefix . 'mjr_bc_invoice_payments';
+		$t3 = $table_prefix . 'mjr_bc_pending_invoice_payments';
+
+		$drop_sql = "DROP TABLE $t1, $t2, $t3"; 
+		echo '<div class="updated"><h3>$drop_sql \n' . 
+		$wpdb->last_error . '</h3></div>';
+		$wpdb->query($drop_sql);
+	}
+
+	function mjr_bitcoin_mysql_table_exists() {
+		global $wpdb;
+		global $table_name;
+		
 		if ( !$wpdb->get_results("SHOW TABLES LIKE '%$table_name%'") ) return FALSE;
 		else return TRUE;
 	}
