@@ -24,7 +24,7 @@ class Mjr_Bitcoin{
 
 	private $blockchain_root = "https://blockchain.info/"; 
 	private $mysite_root = "http://mjrosengrant.com/";
-	private $secret = "2B97B7C0541A69BFCC333B8C7480FC573996dC030253287CD6A81576D75981EF";
+	private $secret = "DONTTELLTHEMYOURSECRET";
 	private $my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
 
 	//Stores page id as index and price in USD as the value
