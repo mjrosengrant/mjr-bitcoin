@@ -11,8 +11,8 @@ Author URI: http://mjrosengrant.com
 //http://code.tutsplus.com/tutorials/two-ways-to-develop-wordpress-plugins-object-oriented-programming--wp-27716
 // Add link to bitcoin demo here
 
-//require "mjr_bc_installer.php";
-
+require_once "mjr_bc_installer.class.php";
+require_once "blockhain_delegate.class.php";
 
 class Mjr_Bitcoin{
 
@@ -20,7 +20,8 @@ class Mjr_Bitcoin{
 	private static $instance = null;
 
  	//Delegate for Blockchain API calls
- 	private $bchain_delegate = null;
+ 	private $bchain_delegate;
+ 	private $installer;
 
 	private $blockchain_root = "https://blockchain.info/"; 
 	private $mysite_root = "http://mjrosengrant.com/";
@@ -29,10 +30,8 @@ class Mjr_Bitcoin{
 
 	//Stores page id as index and price in USD as the value
 	private $premium_pages = array();
- 	
 
-
-
+	//Instantiates the Singleton Object
 	public static function get_instance() {
  
         if ( null == self::$instance ) {
@@ -45,19 +44,17 @@ class Mjr_Bitcoin{
 
 	private function __construct(){
         
-        require_once plugin_dir_path( __FILE__ ) . "blockhain_delegate.php";
-        $bchain_delegate = new Blockchain_Delegate();
+        $this->bchain_delegate = new Blockchain_Delegate();
+        $this->installer = new Mjr_Bc_Installer();
 
-        register_activation_hook( __FILE__, array($this, 'create_invoice_tables'));
+        register_activation_hook( __FILE__, array($this, '$this->installer->install'));
 	    load_plugin_textdomain( 'mjr_bc', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
-
 	    add_action( 'save_post', 'myplugin_save_meta_box_data' );
 		add_action( 'add_meta_boxes', 'myplugin_add_meta_box' );
-
         add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
-		add_filter( 'the_password_form', 'print_qr_code' );
-
+		add_filter( 'the_password_form', array($this, 'print_qr_code' ) );
  		add_filter( 'the_content', array( $this, 'append_post_notification' ) );	
+
 	}
 	 
 	public function register_plugin_scripts() {
@@ -75,7 +72,8 @@ class Mjr_Bitcoin{
 
 	public function append_post_notification( $content ) {
  
-	    $notification = __( '$100 = ' . $this->bchain_delegate->test/*$this->bchain_delegate->usd_to_btc(100) . 'BTC'*/, 'mjr_bc-locale' );
+ 		//var_dump ($this->bchain_delegate);
+	    $notification = __( '<h1>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h1>", 'mjr_bc-locale');
 	    return $content . $notification;
  
 	}
@@ -94,54 +92,7 @@ class Mjr_Bitcoin{
 
 	}
 
-	function create_invoice_tables ( $wpdb, $table_prefix ) {
 	
-		global $wpdb;
-		global $table_prefix;
-
-		$charset_collate = $wpdb->get_charset_collate();
-
-		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
-
-		//Creates Invoice Table
-	  	$invoice_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_invoices (
-			invoice_id INTEGER, 
-			price_in_usd DOUBLE, 
-			price_in_btc DOUBLE, 
-			product_url TEXT, 
-			PRIMARY KEY (invoice_id))';
-		dbDelta($invoice_sql);
-
-		//Creates invoice payment Table
-		$invoice_payment_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_invoice_payments (
-			transaction_hash CHAR(64), 
-			value DOUBLE, 
-			invoice_id INTEGER, 
-			PRIMARY KEY (transaction_hash))';
-		dbDelta($invoice_payment_sql);
-
-
-		//Creates pending invoices table
-		$pending_invoice_sql = 'CREATE TABLE IF NOT EXISTS ' . $table_prefix . 'mjr_bc_pending_invoice_payments (
-			transaction_hash CHAR(64), 
-			value DOUBLE, 
-			invoice_id INTEGER, 
-			PRIMARY KEY (transaction_hash))';
-		dbDelta($pending_invoice_sql);
-	}
-
-	function mjr_bitcoin_mysql_table_exists( $wpdb, $table_name ) {
-		global $wpdb;
-		if ( !$wpdb->get_results("SHOW TABLES LIKE '%$table_name%'") ) return FALSE;
-		else return TRUE;
-	}
-
-
-	function mjr_bitcoin_mysql_warning() {
-		global $wpdb;
-		echo '<div class="updated"><h3>WARNING! The MJR Bitcoin MySQL databases were not created! ' . 
-		$wpdb->last_error . '</h3></div>';
-	}
 
 
 /**
@@ -237,11 +188,6 @@ function myplugin_save_meta_box_data( $post_id ) {
 	// Update the meta field in the database.
 	update_post_meta( $post_id, '_my_meta_value_key', $my_data );
 }
-
-
-
-
-
 
 
 }
