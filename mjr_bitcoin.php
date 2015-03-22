@@ -23,11 +23,6 @@ class Mjr_Bitcoin{
  	private $bchain_delegate;
  	private $installer;
 
-	private $blockchain_root = "https://blockchain.info/"; 
-	private $mysite_root = "http://mjrosengrant.com/";
-	private $secret = "DONTTELLTHEMYOURSECRET";
-	private $my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
-
 	//Stores page id as index and price in USD as the value
 	private $premium_pages = array();
 
@@ -49,12 +44,11 @@ class Mjr_Bitcoin{
 
         register_activation_hook( __FILE__, array($this, 'run_install'));
 	    load_plugin_textdomain( 'mjr_bc', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
-	    add_action( 'save_post', 'myplugin_save_meta_box_data' );
-		add_action( 'add_meta_boxes', 'myplugin_add_meta_box' );
+	    add_action( 'save_post', array($this,'myplugin_save_meta_box_data') );
+		add_action( 'add_meta_boxes', array($this,'myplugin_add_meta_box') );
         add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
 		add_filter( 'the_password_form', array($this, 'print_qr_code' ) );
  		add_filter( 'the_content', array( $this, 'append_post_notification' ) );
-        //register_deactivation_hook( __FILE__, array($this, 'drop_invoice_tables'));
         register_deactivation_hook( __FILE__, array($this, 'run_uninstall'));
 	}
 
