@@ -1,21 +1,24 @@
 <?php
 
 class TransactionProcessor(){
-	
+
 	private $blockchain_root = "https://blockchain.info/"; 
 	private $mysite_root = "http://mjrosengrant.com/";
 	private $secret = "^y69=>>l2V+8oddcEz7]q08G|xu4R5";
 	private $my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
+	
+	//invoice_id must be posted to this page
+	$invoice_id = intval($_GET['invoice_id']);
+	$product_url = '';
+	$price_in_usd = 0;
+	$price_in_btc = 0;
+	$amount_paid_btc = 0;
+	$amount_pending_btc = 0;
 
 
 	//Pulls accountinfo from DB
 	function setAccountInfo(){
 		$invoice_id = intval($_GET['invoice_id']);
-		$product_url = '';
-		$price_in_usd = 0;
-		$price_in_btc = 0;
-		$amount_paid_btc = 0;
-		$amount_pending_btc = 0;
 
 		global $wpdb;
 
@@ -80,6 +83,60 @@ class TransactionProcessor(){
 
 	}
 
+
+
+	//callback is where information is transaction is verified
+	function callback(){
+		global $wpdb;
+
+		mysql_select_db($mysql_database) or die( $wpdb->last_error);
+
+		if (!$result) {
+		    die(__LINE__ . ' Invalid query: ' . $wpdb->last_error);
+		}
+
+		$invoice_id = $_GET['invoice_id'];
+		$transaction_hash = $_GET['transaction_hash'];
+		$value_in_btc = $_GET['value'] / 100000000;
+
+		//Commented out to test, uncomment when live
+		/*if ($_GET['test'] == true) {
+		  echo 'Ignoring Test Callback';
+		  return;
+		}*/
+
+		
+		if ($_GET['address'] != $my_bitcoin_address) {
+		    echo 'Incorrect Receiving Address';
+		  return;
+		}
+
+		if ($_GET['secret'] != $secret) {
+		  echo 'Invalid Secret';
+		  return;
+		}
+
+		if ($_GET['confirmations'] >= 4) {
+		  //Add the invoice to the database
+		  $result = mysql_query("replace INTO invoice_payments (invoice_id, transaction_hash, value) values($invoice_id, '$transaction_hash', $value_in_btc)");
+
+		  //Delete from pending
+		  mysql_query("delete from pending_invoice_payments where invoice_id = $invoice_id limit 1");
+
+		  if($result) {
+			   echo "*ok*";
+		  }
+		} else {
+		   //Waiting for confirmations
+		   //create a pending payment entry
+		   mysql_query("replace INTO pending_invoice_payments (invoice_id, transaction_hash, value) values($invoice_id, '$transaction_hash', $value_in_btc)");
+
+		   echo "Waiting for confirmations";
+		}
+		
+
+
+	}
 
 
 

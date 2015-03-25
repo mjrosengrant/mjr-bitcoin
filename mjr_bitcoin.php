@@ -47,7 +47,7 @@ class Mjr_Bitcoin{
 	    add_action( 'save_post', array($this,'myplugin_save_meta_box_data') );
 		add_action( 'add_meta_boxes', array($this,'myplugin_add_meta_box') );
         add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
-		add_filter( 'the_password_form', array($this, 'print_qr_code' ) );
+		add_filter( 'the_password_form', array($this, 'print_qr' ) );
  		add_filter( 'the_content', array( $this, 'append_post_notification' ) );
         register_deactivation_hook( __FILE__, array($this, 'run_uninstall'));
 	}
@@ -59,42 +59,35 @@ class Mjr_Bitcoin{
 	public function run_uninstall(){
 		$this->installer->uninstall();
 	}
-	 
-	public function register_plugin_scripts() {
-	 
-	   /* wp_register_script( 'mjr_bc', plugins_url( 'mjr_bc/receive_payments/callback.php' ) );
-	    wp_enqueue_script( 'mjr_bc' );
-
-	    wp_register_script( 'mjr_bc', plugins_url( 'mjr_bc/receive_payments/include.php' ) );
-	    wp_enqueue_script( 'mjr_bc' );
-
-	    wp_register_script( 'mjr_bc', plugins_url( 'mjr_bc/receive_payments/order_status.php' ) );
-	    wp_enqueue_script( 'mjr_bc' );*/
-	 
-	}
 
 	public function append_post_notification( $content ) {
- 
-	    $notification = __( '<h1>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h1>", 'mjr_bc-locale');
+		global $post;
+
+		if($post->ID == "1"){ 
+	    	$notification = __( '<h3>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h3>", 'mjr_bc-locale');
+	    }
 	    return $content . $notification;
  
 	}
 
-	public function print_qr_code($content){
+	function print_qr($content){
+		$my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
+		$price_in_btc = 0006;
 
-		/*$content = '<div class="blockchain stage-ready" style="text-align:center">
-                Please send' . $price_in_btc . ' BTC to <br /> <b>' . [[address]] . '</b> <br /> 
-                <img style="margin:5px" id="qrsend" src=" ' . $blockchain_root . 'qr?data=bitcoin:' . 
-                $my_bitcoin_address .'%3Famount==' . $price_in_btc.'%26label=Pay-Demo&size=125" alt=""/>
-            </div>';*/
+		$url = $this->bchain_delegate->generateQRUrl($my_bitcoin_address, 0.0006);
 
- 		$content = $content . " Print qr code function is working!";
-
- 		return $content;
-
+		$content =
+		'
+            <div class="blockchain stage-ready" style="text-align:center">
+                To view this post please send <?php echo $price_in_btc ?> BTC to <br /> <b>'.$my_bitcoin_address.'</b> <br /> 
+                <img style="margin:5px" id="qrsend" src="'.$url. '" alt=""/>
+                Please note this is still under development, and sending money to this address will do nothing for you.
+            </div>
+		';
+		
+		//$content = $url;
+		return $content;
 	}
-
-	
 
 
 	/**
@@ -122,7 +115,7 @@ class Mjr_Bitcoin{
 	function myplugin_meta_box_callback( $post ) {
 
 		// Add an nonce field so we can check for it later.
-		wp_nonce_field( 'myplugin_meta_box', 'myplugin_meta_box_nonce' );
+		//wp_nonce_field( 'myplugin_meta_box', 'myplugin_meta_box_nonce' );
 
 		/*
 		 * Use get_post_meta() to retrieve an existing value
@@ -130,10 +123,10 @@ class Mjr_Bitcoin{
 		 */
 		$value = get_post_meta( $post->ID, '_my_meta_value_key', true );
 
-		echo '<label for="myplugin_new_field">';
+		echo '<label for="premium_checkbox">';
 		_e( 'Make this post Premium', 'myplugin_textdomain' );
 		echo '</label> ';
-		echo '<input type="checkbox" id="myplugin_new_field" name="myplugin_new_field" value="' . esc_attr( $value ) . '" size="25" />';
+		echo '<input type="checkbox" id="premium_checkbox" name="myplugin_new_field" value="' . esc_attr( $value ) . '" size="25" />';
 	}
 
 	/**
@@ -191,9 +184,7 @@ class Mjr_Bitcoin{
 		update_post_meta( $post_id, '_my_meta_value_key', $my_data );
 	}
 
-
 }
-
 $mjr_bc = Mjr_Bitcoin::get_instance();
 
 

@@ -30,6 +30,23 @@ class Blockchain_Delegate{
 	}
 
 
+	public function generateReceivingAddress($callback_url){
+		$results = file_get_contents(
+			'https://blockchain.info/api/receive?method=create&address=$receiving_address&callback=$callback_url');
+
+		return $results;
+	}
+
+	public function generateQRUrl($my_bitcoin_address, $price_in_btc){
+    	//Url to get QR code. Not sure of best way to return it yet
+    	return $this->blockchain_root . "qr?data=bitcoin:".$my_bitcoin_address ."%3Famount=".$price_in_btc."%26label=Pay-Demo&size=125";
+	}
+
+
+
+
+
+
 
 }
 
