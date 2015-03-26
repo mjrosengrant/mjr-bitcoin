@@ -75,12 +75,19 @@ class Mjr_Bitcoin{
 	public function print_qr($content){
 		$my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
 		$price_in_btc = 0006;
+		
+		global $post;
+		$usd_price = get_post_meta( $post->ID, 'price_in_usd', true );
+		$btc_price = $this->bchain_delegate->usd_to_btc($usd_price);
+
+		setlocale(LC_MONETARY, 'en_US');
 
 		$url = $this->bchain_delegate->generateQRUrl($my_bitcoin_address, 0.0006);
 		$content =
 		'
             <div class="blockchain stage-ready" style="text-align:center">
-                To view this post please send <?php echo $price_in_btc ?> BTC to <br /> <b>'.$my_bitcoin_address.'</b> <br /> 
+                To view this post please send ' . $btc_price . ' BTC ($' . number_format($usd_price,2) .')
+                to <br /> <b>'.$my_bitcoin_address.'</b> <br /> 
                 <img style="margin:5px" id="qrsend" src="'.$url. '" alt=""/>
                 Please note this is still under development, and sending money to this address will do nothing for you.
             </div>
@@ -119,9 +126,7 @@ class Mjr_Bitcoin{
 
 		// Use get_post_meta to retrieve an existing value from the database.
 		$isPremiumCur = get_post_meta( $post->ID, 'isPremium', true );
-		var_dump($isPremiumCur);
 		$price_in_usdCur = get_post_meta( $post->ID, 'price_in_usd', true );
-		var_dump($price_in_usdCur);
 
 		$boxChecked = "";
 		if($isPremiumCur == 1){
@@ -184,6 +189,7 @@ class Mjr_Bitcoin{
 		}
 
 		/* OK, its safe for us to save the data now. */
+		
 		$isPremium;
 		$price_in_usd;
 		// Sanitize the user input.
