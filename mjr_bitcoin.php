@@ -24,7 +24,7 @@ class Mjr_Bitcoin{
  	private $installer;
 
 	//Stores page id as index and price in USD as the value
-	private $premium_pages = array();
+	//private $premium_pages = array();
 
 	//Instantiates the Singleton Object
 	public static function get_instance() {
@@ -41,20 +41,15 @@ class Mjr_Bitcoin{
         
         $this->bchain_delegate = new Blockchain_Delegate();
         $this->installer = new Mjr_Bc_Installer();
+        $this->premium_pages = array();
 
         register_activation_hook( __FILE__, array($this, 'run_install'));
 	    load_plugin_textdomain( 'mjr_bc', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
-		add_action( 'save_post', array( $this, 'save' ) );
-
-        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
+		add_action( 'save_post', array( $this, 'save_meta_box_data' ) );
 		add_filter( 'the_password_form', array($this, 'print_qr' ) );
  		add_filter( 'the_content', array( $this, 'append_post_notification' ) );
         register_deactivation_hook( __FILE__, array($this, 'run_uninstall'));
-	}
-
-	function register_plugin_scripts(){
-
 	}
 
 	public function run_install(){
@@ -67,11 +62,14 @@ class Mjr_Bitcoin{
 
 	public function append_post_notification( $content ) {
 		global $post;
+		//1196 is the post_id for test outputs
+		if($post->ID == "1196"){ 
+	    	$out =  $content .  __( '<h3>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h3>", 'mjr_bc-locale');
 
-		if($post->ID == "1"){ 
-	    	return $content .  __( '<h3>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h3>", 'mjr_bc-locale');
-	    }
- 
+	 		return $out;
+ 		}
+
+ 		return $content;
 	}
 
 	public function print_qr($content){
@@ -79,7 +77,6 @@ class Mjr_Bitcoin{
 		$price_in_btc = 0006;
 
 		$url = $this->bchain_delegate->generateQRUrl($my_bitcoin_address, 0.0006);
-
 		$content =
 		'
             <div class="blockchain stage-ready" style="text-align:center">
@@ -88,8 +85,7 @@ class Mjr_Bitcoin{
                 Please note this is still under development, and sending money to this address will do nothing for you.
             </div>
 		';
-		
-		//$content = $url;
+		//$content = "Is this working?";
 		return $content;
 	}
 
@@ -111,7 +107,7 @@ class Mjr_Bitcoin{
         }
     }
 
-/**
+	/**
 	 * Render Meta Box content.
 	 *
 	 * @param WP_Post $post The post object.
@@ -122,22 +118,28 @@ class Mjr_Bitcoin{
 		wp_nonce_field( 'myplugin_inner_custom_box', 'myplugin_inner_custom_box_nonce' );
 
 		// Use get_post_meta to retrieve an existing value from the database.
-		$premium = get_post_meta( $post->ID, '_premium', true );
-		$amt_in_usd = get_post_meta( $post->ID, '_amt_in_usd', true );
+		$isPremiumCur = get_post_meta( $post->ID, 'isPremium', true );
+		var_dump($isPremiumCur);
+		$price_in_usdCur = get_post_meta( $post->ID, 'price_in_usd', true );
+		var_dump($price_in_usdCur);
 
+		$boxChecked = "";
+		if($isPremiumCur == 1){
+			$boxChecked = "checked";
+		}
 
 		// Display the form, using the current value.
 		echo '<label for="premium_checkbox">';
 		_e( 'Make This Post Premium', 'myplugin_textdomain' );
 		echo '</label> ';
 		echo '<input type="checkbox" id="premium_checkbox" name="premium_checkbox"';
-        echo ' value="' . esc_attr( $premium ) . '" size="25" /><br>';
+        echo ' value=1 size="25" '. $boxChecked . '/><br>';
         
-        echo '<label for="amt_in_usd_tb">';
+        echo '<label for="price_in_usd">';
         _e('How much should this post cost? (USD)', 'myplugin_textdomain');
-		echo '<input type="text" id="amt_in_usd_tb" name="amt_in_usd_tb "';
-		echo 'value ="' . esc_attr( $amt_in_usd ) . '" />';
-
+        echo '</label>';
+		echo '<input type="text" id="price_in_usd" name="price_in_usd"';
+		echo 'value ="' . esc_attr( $price_in_usdCur ) . '" />';
 
 	}
 
@@ -147,7 +149,7 @@ class Mjr_Bitcoin{
 	*
 	* @param int $post_id The ID of the post being saved.
 	*/
-	public function save( $post_id ) {
+	public function save_meta_box_data( $post_id ) {
 	
 		/*
 		 * We need to verify this came from the our screen and with proper authorization,
@@ -182,12 +184,21 @@ class Mjr_Bitcoin{
 		}
 
 		/* OK, its safe for us to save the data now. */
-
+		$isPremium;
+		$price_in_usd;
 		// Sanitize the user input.
-		$mydata = sanitize_text_field( $_POST['myplugin_new_field'] );
+		if(isset($_POST['premium_checkbox']) && $_POST['premium_checkbox'] == 1){ 
+			$isPremium = sanitize_text_field($_POST['premium_checkbox']);
+		}
+
+		if(isset($_POST['price_in_usd']) && $_POST['price_in_usd'] != ""){ 
+			$price_in_usd = sanitize_text_field( $_POST['price_in_usd'] );
+		}
 
 		// Update the meta field.
-		update_post_meta( $post_id, '_my_meta_value_key', $mydata );
+		update_post_meta( $post_id, 'isPremium', $isPremium );
+		update_post_meta( $post_id, 'price_in_usd', $price_in_usd);
+
 	}
 
 }
