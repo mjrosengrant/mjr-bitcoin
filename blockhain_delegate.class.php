@@ -37,7 +37,7 @@ class Blockchain_Delegate{
 	}
 
 	public function generateQRUrl($my_bitcoin_address, $price_in_btc){
-    	//Url to get QR code. Not sure of best way to return it yet
+    	//Url to get QR code.
     	return $this->blockchain_root . "qr?data=bitcoin:".$my_bitcoin_address ."%3Famount=".$price_in_btc."%26label=Pay-Demo&size=125";
 	}
 

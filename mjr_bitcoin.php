@@ -79,7 +79,7 @@ class Mjr_Bitcoin{
 		$usd_price = get_post_meta( $post->ID, 'price_in_usd', true );
 		$btc_price = $this->bchain_delegate->usd_to_btc($usd_price);
 
-		$url = $this->bchain_delegate->generateQRUrl($my_bitcoin_address, 0.0006);
+		$url = $this->bchain_delegate->generateQRUrl($my_bitcoin_address, $btc_price);
 		$content =
 		'
             <div class="blockchain stage-ready" style="text-align:center">
