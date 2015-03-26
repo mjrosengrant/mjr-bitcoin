@@ -74,13 +74,10 @@ class Mjr_Bitcoin{
 
 	public function print_qr($content){
 		$my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
-		$price_in_btc = 0006;
 		
 		global $post;
 		$usd_price = get_post_meta( $post->ID, 'price_in_usd', true );
 		$btc_price = $this->bchain_delegate->usd_to_btc($usd_price);
-
-		setlocale(LC_MONETARY, 'en_US');
 
 		$url = $this->bchain_delegate->generateQRUrl($my_bitcoin_address, 0.0006);
 		$content =
@@ -92,7 +89,6 @@ class Mjr_Bitcoin{
                 Please note this is still under development, and sending money to this address will do nothing for you.
             </div>
 		';
-		//$content = "Is this working?";
 		return $content;
 	}
 

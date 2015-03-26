@@ -57,7 +57,7 @@ class TransactionProcessor(){
 	//Need to convert DB calls into the Wordpress format
 	function getConfirmedAmountPaid(){
 		//find the confirmed amount paid
-		$result = mysql_query("select value from invoice_payments where invoice_id = $invoice_id");
+		$result = dbDelta("SELECT value FROM invoice_payments WHERE invoice_id = $invoice_id");
 		         
 		while($row = mysql_fetch_array($result)){
 			$amount_paid_btc += $row['value']; 
@@ -89,8 +89,6 @@ class TransactionProcessor(){
 	function callback(){
 		global $wpdb;
 
-		mysql_select_db($mysql_database) or die( $wpdb->last_error);
-
 		if (!$result) {
 		    die(__LINE__ . ' Invalid query: ' . $wpdb->last_error);
 		}
@@ -117,21 +115,24 @@ class TransactionProcessor(){
 		}
 
 		if ($_GET['confirmations'] >= 4) {
-		  //Add the invoice to the database
-		  $result = mysql_query("replace INTO invoice_payments (invoice_id, transaction_hash, value) values($invoice_id, '$transaction_hash', $value_in_btc)");
+		  	//Add the invoice to the database
+			$result = $wpdb->query(
+				"REPLACE INTO invoice_payments (invoice_id, transaction_hash, value) 
+				VALUES ($invoice_id, '$transaction_hash', $value_in_btc)");
+		  	//Delete from pending
+		  	$wpdb->query("delete from pending_invoice_payments where invoice_id = $invoice_id limit 1");
 
-		  //Delete from pending
-		  mysql_query("delete from pending_invoice_payments where invoice_id = $invoice_id limit 1");
+		  	if($result) {
+			   	echo "*ok*";
+		  	}
+		} 
+		else {
+		   	//Waiting for confirmations
+		   	//create a pending payment entry
+	   		$wpdb->query("replace INTO pending_invoice_payments (invoice_id, transaction_hash, value) 
+		   	values($invoice_id, '$transaction_hash', $value_in_btc)");
 
-		  if($result) {
-			   echo "*ok*";
-		  }
-		} else {
-		   //Waiting for confirmations
-		   //create a pending payment entry
-		   mysql_query("replace INTO pending_invoice_payments (invoice_id, transaction_hash, value) values($invoice_id, '$transaction_hash', $value_in_btc)");
-
-		   echo "Waiting for confirmations";
+		   	echo "Waiting for confirmations";
 		}
 		
 

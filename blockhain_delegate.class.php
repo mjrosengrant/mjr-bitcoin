@@ -33,7 +33,6 @@ class Blockchain_Delegate{
 	public function generateReceivingAddress($callback_url){
 		$results = file_get_contents(
 			'https://blockchain.info/api/receive?method=create&address=$receiving_address&callback=$callback_url');
-
 		return $results;
 	}
 
