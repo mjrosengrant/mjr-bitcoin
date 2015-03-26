@@ -44,12 +44,17 @@ class Mjr_Bitcoin{
 
         register_activation_hook( __FILE__, array($this, 'run_install'));
 	    load_plugin_textdomain( 'mjr_bc', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
-	    add_action( 'save_post', array($this,'myplugin_save_meta_box_data') );
-		add_action( 'add_meta_boxes', array($this,'myplugin_add_meta_box') );
+		add_action( 'add_meta_boxes', array( $this, 'add_meta_box' ) );
+		add_action( 'save_post', array( $this, 'save' ) );
+
         add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_scripts' ) );
 		add_filter( 'the_password_form', array($this, 'print_qr' ) );
  		add_filter( 'the_content', array( $this, 'append_post_notification' ) );
         register_deactivation_hook( __FILE__, array($this, 'run_uninstall'));
+	}
+
+	function register_plugin_scripts(){
+
 	}
 
 	public function run_install(){
@@ -64,13 +69,12 @@ class Mjr_Bitcoin{
 		global $post;
 
 		if($post->ID == "1"){ 
-	    	$notification = __( '<h3>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h3>", 'mjr_bc-locale');
+	    	return $content .  __( '<h3>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h3>", 'mjr_bc-locale');
 	    }
-	    return $content . $notification;
  
 	}
 
-	function print_qr($content){
+	public function print_qr($content){
 		$my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
 		$price_in_btc = 0006;
 
@@ -91,97 +95,99 @@ class Mjr_Bitcoin{
 
 
 	/**
-	 * Adds a box to the main column on the Post and Page edit screens.
+	 * Adds the meta box container.
 	 */
-	function myplugin_add_meta_box() {
-
-		$screens = array( 'post', 'page' );
-
-		foreach ( $screens as $screen ) {
+	function add_meta_box( $post_type ) {
+    $post_types = array('post', 'page');     //limit meta box to certain post types
+        if ( in_array( $post_type, $post_types )) {
 			add_meta_box(
-				'myplugin_sectionid',
-				__( 'MJR Bitcoin Settings', 'myplugin_textdomain' ),
-				'myplugin_meta_box_callback',
-				$screen
+				'mjr_bitcoin_metabox'
+				,__( 'MJR Bitcoin Settings', 'myplugin_textdomain' )
+				,array( $this, 'render_meta_box_content' )
+				,$post_type
+				,'advanced'
+				,'high'
 			);
-		}
-	}
+        }
+    }
 
-	/**
-	 * Prints the box content.
-	 * 
-	 * @param WP_Post $post The object for the current post/page.
-	 */
-	function myplugin_meta_box_callback( $post ) {
-
-		// Add an nonce field so we can check for it later.
-		//wp_nonce_field( 'myplugin_meta_box', 'myplugin_meta_box_nonce' );
-
-		/*
-		 * Use get_post_meta() to retrieve an existing value
-		 * from the database and use the value for the form.
-		 */
-		$value = get_post_meta( $post->ID, '_my_meta_value_key', true );
-
-		echo '<label for="premium_checkbox">';
-		_e( 'Make this post Premium', 'myplugin_textdomain' );
-		echo '</label> ';
-		echo '<input type="checkbox" id="premium_checkbox" name="myplugin_new_field" value="' . esc_attr( $value ) . '" size="25" />';
-	}
-
-	/**
-	 * When the post is saved, saves our custom data.
+/**
+	 * Render Meta Box content.
 	 *
-	 * @param int $post_id The ID of the post being saved.
+	 * @param WP_Post $post The post object.
 	 */
-	function myplugin_save_meta_box_data( $post_id ) {
+	public function render_meta_box_content( $post ) {
+	
+		// Add an nonce field so we can check for it later.
+		wp_nonce_field( 'myplugin_inner_custom_box', 'myplugin_inner_custom_box_nonce' );
 
+		// Use get_post_meta to retrieve an existing value from the database.
+		$premium = get_post_meta( $post->ID, '_premium', true );
+		$amt_in_usd = get_post_meta( $post->ID, '_amt_in_usd', true );
+
+
+		// Display the form, using the current value.
+		echo '<label for="premium_checkbox">';
+		_e( 'Make This Post Premium', 'myplugin_textdomain' );
+		echo '</label> ';
+		echo '<input type="checkbox" id="premium_checkbox" name="premium_checkbox"';
+        echo ' value="' . esc_attr( $premium ) . '" size="25" /><br>';
+        
+        echo '<label for="amt_in_usd_tb">';
+        _e('How much should this post cost? (USD)', 'myplugin_textdomain');
+		echo '<input type="text" id="amt_in_usd_tb" name="amt_in_usd_tb "';
+		echo 'value ="' . esc_attr( $amt_in_usd ) . '" />';
+
+
+	}
+
+
+	/**
+	* Save the meta when the post is saved.
+	*
+	* @param int $post_id The ID of the post being saved.
+	*/
+	public function save( $post_id ) {
+	
 		/*
-		 * We need to verify this came from our screen and with proper authorization,
-		 * because the save_post action can be triggered at other times.
+		 * We need to verify this came from the our screen and with proper authorization,
+		 * because save_post can be triggered at other times.
 		 */
 
 		// Check if our nonce is set.
-		if ( ! isset( $_POST['myplugin_meta_box_nonce'] ) ) {
-			return;
-		}
+		if ( ! isset( $_POST['myplugin_inner_custom_box_nonce'] ) )
+			return $post_id;
+
+		$nonce = $_POST['myplugin_inner_custom_box_nonce'];
 
 		// Verify that the nonce is valid.
-		if ( ! wp_verify_nonce( $_POST['myplugin_meta_box_nonce'], 'myplugin_meta_box' ) ) {
-			return;
-		}
+		if ( ! wp_verify_nonce( $nonce, 'myplugin_inner_custom_box' ) )
+			return $post_id;
 
-		// If this is an autosave, our form has not been submitted, so we don't want to do anything.
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-			return;
-		}
+		// If this is an autosave, our form has not been submitted,
+                //     so we don't want to do anything.
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
+			return $post_id;
 
 		// Check the user's permissions.
-		if ( isset( $_POST['post_type'] ) && 'page' == $_POST['post_type'] ) {
+		if ( 'page' == $_POST['post_type'] ) {
 
-			if ( ! current_user_can( 'edit_page', $post_id ) ) {
-				return;
-			}
-
+			if ( ! current_user_can( 'edit_page', $post_id ) )
+				return $post_id;
+	
 		} else {
 
-			if ( ! current_user_can( 'edit_post', $post_id ) ) {
-				return;
-			}
+			if ( ! current_user_can( 'edit_post', $post_id ) )
+				return $post_id;
 		}
 
-		/* OK, it's safe for us to save the data now. */
-		
-		// Make sure that it is set.
-		if ( ! isset( $_POST['myplugin_new_field'] ) ) {
-			return;
-		}
+		/* OK, its safe for us to save the data now. */
 
-		// Sanitize user input.
-		$my_data = sanitize_text_field( $_POST['myplugin_new_field'] );
+		// Sanitize the user input.
+		$mydata = sanitize_text_field( $_POST['myplugin_new_field'] );
 
-		// Update the meta field in the database.
-		update_post_meta( $post_id, '_my_meta_value_key', $my_data );
+		// Update the meta field.
+		update_post_meta( $post_id, '_my_meta_value_key', $mydata );
 	}
 
 }
