@@ -1,5 +1,12 @@
 
-<?php global $wpdb;
+<?php 
+
+	global $wpdb;
+
+	$blockchain_root = "https://blockchain.info/"; 
+	$mysite_root = "http://mjrosengrant.com/";
+	$secret = "^y69=>>l2V+65gsfGFgfsfGfgsdFgDFgsfgsdfgdf8oddcEz7]q08G|xu4R5";
+	$my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
 
 	if (!$result) {
 	    die(__LINE__ . ' Invalid query: ' . $wpdb->last_error);
@@ -15,40 +22,36 @@
 	  return;
 	}*/
 
-
 	if ($_GET['address'] != $my_bitcoin_address) {
 	    echo 'Incorrect Receiving Address';
-	  return;
+	  	return;
 	}
 
 	if ($_GET['secret'] != $secret) {
-	  echo 'Invalid Secret';
-	  return;
+		echo 'Invalid Secret';
+	  	return;
 	}
 
 	if ($_GET['confirmations'] >= 4) {
 	  	//Add the invoice to the database
 		$result = $wpdb->query(
-			"REPLACE INTO invoice_payments (invoice_id, transaction_hash, value) 
+			"REPLACE INTO wp_mjr_bc_invoice_payments (invoice_id, transaction_hash, value) 
 			VALUES ($invoice_id, '$transaction_hash', $value_in_btc)");
 	  	//Delete from pending
-	  	$wpdb->query("delete from pending_invoice_payments where invoice_id = $invoice_id limit 1");
+	  	$wpdb->query("delete from wp_mjr_bc_pending_invoice_payments where wp_mjr_bc_invoice_id = $invoice_id limit 1");
 
 	  	if($result) {
 		   	echo "*ok*";
 	  	}
 	} 
 	else {
-	   	//Waiting for confirmations
+   		//Waiting for confirmations
 	   	//create a pending payment entry
-			$wpdb->query("replace INTO pending_invoice_payments (invoice_id, transaction_hash, value) 
+		$wpdb->query("replace INTO wp_mjr_bc_pending_invoice_payments (invoice_id, transaction_hash, value) 
 	   	values($invoice_id, '$transaction_hash', $value_in_btc)");
 
 	   	echo "Waiting for confirmations";
 	}
 
-
-
-	}
 
 ?>

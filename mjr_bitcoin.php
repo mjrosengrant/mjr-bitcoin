@@ -4,7 +4,7 @@ Plugin Name: MJR Bitcoin
 Plugin URI: http://gordon.knoppe.net/articles/category/attach-files/
 Description: Creates a bitcoin paywall, and records transactions
 Author: Mike Rosengrant
-Author URI: http://mjrosengrant.com
+Author URI: http://blog.mjrosengrant.com
 */
 
 //I began this plugin based on several different open source projects, Including
@@ -50,6 +50,8 @@ class Mjr_Bitcoin{
 		add_filter( 'the_password_form', array($this, 'print_qr' ) );
  		add_filter( 'the_content', array( $this, 'append_post_notification' ) );
         register_deactivation_hook( __FILE__, array($this, 'run_uninstall'));
+
+        wp_register_script( 'callback.php', plugins_url() . "/mjr_bitcoin/callback.php");
 	}
 
 	public function run_install(){
@@ -62,10 +64,17 @@ class Mjr_Bitcoin{
 
 	public function append_post_notification( $content ) {
 		global $post;
-		//1196 is the post_id for test outputs
-		if($post->ID == "1196"){ 
-	    	$out =  $content .  __( '<h3>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h3>", 'mjr_bc-locale');
+		//1196 is the post_id for test outputs in wp at work
+		//31 is bitcoin.mjrosengrant.com test post
+		if($post->ID == "31"){ 
+			$my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
+			$callback_url = plugins_url() . "/mjr_bitcoin/callback.php";
 
+			$r_addr = $this->bchain_delegate->generateReceivingAddress($my_bitcoin_address, $callback_url);
+			
+	    	$out = $content .  __( '<h3>1 BTC = $' . $this->bchain_delegate->btc_to_usd(1) . "</h3>", 'mjr_bc-locale');
+	    	$out .= $callback_url;
+	    	$out = $out . var_dump($r_addr);
 	 		return $out;
  		}
 
@@ -74,17 +83,23 @@ class Mjr_Bitcoin{
 
 	public function print_qr($content){
 		$my_bitcoin_address = "1EV6zsBQjX7ukR3f7NbUAJfSFQ71LfX2vf";
-		
+		$callback_url = plugins_url() . "/mjr_bitcoin/callback.php";
+		$testCallback = 'http://requestb.in/1h0kzdn1';
+
 		global $post;
+
+		$receive_addr_gen = json_decode($this->bchain_delegate->generateReceivingAddress($my_bitcoin_address, $callback_url),true);
+		$receive_addr = $receive_addr_gen['input_address'];
+
 		$usd_price = get_post_meta( $post->ID, 'price_in_usd', true );
 		$btc_price = $this->bchain_delegate->usd_to_btc($usd_price);
 
-		$url = $this->bchain_delegate->generateQRUrl($my_bitcoin_address, $btc_price);
+		$url = $this->bchain_delegate->generateQRUrl($receive_addr, $btc_price);
 		$content =
 		'
-            <div class="blockchain stage-ready" style="text-align:center">
+            <div style="text-align:center">
                 To view this post please send ' . $btc_price . ' BTC ($' . number_format($usd_price,2) .')
-                to <br /> <b>'.$my_bitcoin_address.'</b> <br /> 
+                to <br /> <b>' .$receive_addr. '</b> <br /> 
                 <img style="margin:5px" id="qrsend" src="'.$url. '" alt=""/>
                 Please note this is still under development, and sending money to this address will do nothing for you.
             </div>
@@ -205,7 +220,5 @@ class Mjr_Bitcoin{
 
 }
 $mjr_bc = Mjr_Bitcoin::get_instance();
-
-
 
 ?>
