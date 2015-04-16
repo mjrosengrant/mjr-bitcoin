@@ -25,9 +25,6 @@ class Mjr_Bitcoin{
  	private $installer;
  	private $menu_builder;
 
-	//Stores page id as index and price in USD as the value
-	//private $premium_pages = array();
-
 	//Instantiates the Singleton Object
 	public static function get_instance() {
  
@@ -44,8 +41,6 @@ class Mjr_Bitcoin{
         $this->bchain_delegate = new Blockchain_Delegate();
         $this->installer = new Mjr_Bc_Installer();
         $this->menu_builder = new Metabox_Builder();
-
-        $this->premium_pages = array();
 
         register_activation_hook( __FILE__, array($this, 'run_install'));
 	    load_plugin_textdomain( 'mjr_bc', false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );
